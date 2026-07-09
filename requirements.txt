@@ -9,3 +9,4 @@ matplotlib==3.9.2
 openai==1.50.2
 llama-index-experimental==0.4.0
 gcloud
+setuptools
