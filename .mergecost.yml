@@ -1,0 +1,25 @@
+# MergeCost configuration — every field is optional.
+# Docs: https://mergecost.jdtensor.com/docs/configuration
+version: 1
+test_command: "pytest -q"
+
+# Requests per day per endpoint ("METHOD route" in your framework's route syntax).
+# Until you fill this in (or install the traffic SDK), every endpoint uses the default below.
+traffic: {}
+#  "GET /posts": 50000
+default_requests_per_day: 10000
+
+# Items per list page in production (tests usually create only a few rows).
+default_collection_size: 20
+
+cloud:
+  provider: aws
+  region: us-east-1
+
+database:
+  kind: rds_provisioned     # rds_provisioned | aurora_io | none
+  monthly_cost: null        # USD for your database instance(s); needed to price query load
+  vcpus: 2
+
+min_monthly_delta: 5        # hide findings under $5/month
+fail_above: null            # e.g. 500 to fail PRs that add more than $500/month
