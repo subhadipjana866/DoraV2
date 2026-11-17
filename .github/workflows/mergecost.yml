@@ -1,0 +1,52 @@
+# Added by MergeCost: estimates the monthly cloud + LLM cost impact of each pull request.
+# Docs: https://mergecost.jdtensor.com/docs
+name: MergeCost
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  mergecost:
+    # Fork PRs cannot read repository secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      MERGECOST_API_KEY: ${{ secrets.MERGECOST_API_KEY }}
+      MERGECOST_API_URL: https://mergecost-api.jdtensor.com
+    # If your tests need Postgres, Redis, etc., copy the `services:` block from your
+    # existing CI workflow here.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Install MergeCost
+        run: |
+          pip install --index-url "https://__token__:${MERGECOST_API_KEY}@mergecost-api.jdtensor.com/simple/" \
+            --extra-index-url https://pypi.org/simple/ pytest-mergecost mergecost
+      - name: Reuse the base commit's measurements
+        uses: actions/cache@v4
+        with:
+          path: .mergecost/base.json
+          key: mergecost-base-${{ github.event.pull_request.base.sha }}
+      - name: Estimate cost impact
+        run: >
+          mergecost run
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --reuse-base --defer-exit --github-output
+          --repo "${{ github.repository }}"
+          --pr "${{ github.event.pull_request.number }}"
+      - name: Post the cost comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          mergecost comment .mergecost/comment.md
+          --repo "${{ github.repository }}"
+          --pr "${{ github.event.pull_request.number }}"
